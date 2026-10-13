@@ -9,6 +9,13 @@ database_name = "go-starry-db"
 database_id = "6e023536-5f23-47d3-b18c-027e5ca09311"
 migrations_dir = "migrations"
 
+# 中央會員資料庫只用於 Starry ID 身份驗證與 App membership；
+# Go Starry 的短網址、點擊紀錄仍留在 go-starry-db。
+[[d1_databases]]
+binding = "STARRY_ID_DB"
+database_name = "starry_id_db"
+database_id = "01195c92-555e-4816-bddc-5b8cb2e795db"
+
 [[routes]]
 pattern = "go.starry.phd"
 custom_domain = true

@@ -1,7 +1,6 @@
 export interface Env {
   DB: D1Database;
-  GOOGLE_CLIENT_ID: string;
-  GOOGLE_CLIENT_SECRET: string;
+  STARRY_ID_DB: D1Database;
   IP_HASH_SALT?: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET_KEY?: string;
@@ -13,6 +12,8 @@ export interface User {
   display_name: string | null;
   avatar_url: string | null;
   status: string;
+  starry_rank?: string | null;
+  starry_profile_url?: string | null;
 }
 
 export interface ShortLink {
