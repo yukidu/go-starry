@@ -1,0 +1,14 @@
+name = "go-starry"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "go-starry-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[routes]]
+pattern = "go.starry.phd/*"
+zone_name = "starry.phd"
