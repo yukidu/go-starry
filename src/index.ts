@@ -1,8 +1,9 @@
 import QRCode from "qrcode-svg";
 import type { Env, ShortLink } from "./types";
 import { appJs, homePage, simplePage, styles } from "./ui";
-import { clearCookie, cookie, html, isAllowedDestination, isValidSlug, json, normalizeSlug, parseCookies, randomToken, sha256 } from "./security";
-import { createSession, getUserFromRequest, listLinks, revokeSession, upsertGoogleUser } from "./db";
+import { clearCookie, html, isAllowedDestination, isValidSlug, json, normalizeSlug, parseCookies, randomToken, sha256 } from "./security";
+import { getUserFromRequest, listLinks, revokeSession } from "./db";
+import { finishStarryAuth, startStarryAuth } from "./starrySso";
 
 const RATE_WINDOW_MINUTES = 10;
 const RATE_MAX_CREATES = 30;
@@ -17,11 +18,11 @@ export default {
     if (path === "/robots.txt") return new Response("User-agent: *\nDisallow: /api/\nDisallow: /auth/\n", { headers: { "content-type": "text/plain" } });
 
     if (request.method === "GET" && path === "/") return html(homePage());
-    if (request.method === "GET" && path === "/privacy") return html(simplePage("隱私權政策", `<p>繁星短網址會保存會員基本登入資料、會員建立的短網址，以及服務運作所需的基本點擊統計。服務不以分析目的保存完整 IP；如啟用匿名雜湊，只用於防濫用與基本統計。</p><p>如需刪除帳號或資料，請由管理員協助處理。</p>`));
+    if (request.method === "GET" && path === "/privacy") return html(simplePage("隱私權政策", `<p>繁星短網址會保存會員基本登入資料、會員建立的短網址，以及服務運作所需的基本點擊統計。服務不以分析目的保存完整 IP；如啟用匿名雜湊，只用於防濫用與基本統計。</p><p>會員身份由 Starry ID 中央會員系統驗證；短網址與點擊資料仍由 Go Starry 獨立保存。</p>`));
     if (request.method === "GET" && path === "/terms") return html(simplePage("服務條款", `<p>禁止使用本服務散布釣魚、惡意程式、詐騙、侵權或其他違法內容。平台可停用疑似濫用的短網址或帳號。</p><p>短網址可能因安全、維護或政策需要而暫停服務。</p>`));
 
-    if (request.method === "GET" && path === "/auth/google") return startGoogleAuth(request, env);
-    if (request.method === "GET" && path === "/auth/google/callback") return finishGoogleAuth(request, env);
+    if (request.method === "GET" && (path === "/auth/starry" || path === "/auth/google" || path === "/auth/google/callback")) return startStarryAuth();
+    if (request.method === "GET" && path === "/auth/callback") return finishStarryAuth(request, env);
 
     if (path.startsWith("/api/")) return handleApi(request, env);
 
@@ -33,56 +34,6 @@ export default {
     return new Response("Not found", { status: 404 });
   }
 };
-
-async function startGoogleAuth(request: Request, env: Env): Promise<Response> {
-  if (!env.GOOGLE_CLIENT_ID) return json({ error: "Google OAuth 尚未設定" }, 503);
-  const state = randomToken(24);
-  const origin = new URL(request.url).origin;
-  const redirectUri = `${origin}/auth/google/callback`;
-  const auth = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  auth.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
-  auth.searchParams.set("redirect_uri", redirectUri);
-  auth.searchParams.set("response_type", "code");
-  auth.searchParams.set("scope", "openid email profile");
-  auth.searchParams.set("state", state);
-  auth.searchParams.set("prompt", "select_account");
-  return new Response(null, { status: 302, headers: { location: auth.toString(), "set-cookie": cookie("starry_oauth_state", state, 600) } });
-}
-
-async function finishGoogleAuth(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  const stored = parseCookies(request.headers.get("cookie")).starry_oauth_state;
-  if (!code || !state || !stored || state !== stored) return json({ error: "OAuth state 驗證失敗" }, 400);
-
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code,
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `${url.origin}/auth/google/callback`,
-      grant_type: "authorization_code"
-    })
-  });
-  if (!tokenRes.ok) return json({ error: "Google token 交換失敗" }, 502);
-  const token = await tokenRes.json() as { access_token?: string };
-  if (!token.access_token) return json({ error: "Google 未回傳 access token" }, 502);
-
-  const infoRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { authorization: `Bearer ${token.access_token}` } });
-  if (!infoRes.ok) return json({ error: "Google userinfo 讀取失敗" }, 502);
-  const profile = await infoRes.json() as { sub?: string; email?: string; email_verified?: boolean; name?: string; picture?: string };
-  if (!profile.sub || !profile.email || profile.email_verified === false) return json({ error: "Google 帳號 Email 無法驗證" }, 403);
-
-  const user = await upsertGoogleUser(env, { sub: profile.sub, email: profile.email, name: profile.name, picture: profile.picture });
-  const session = await createSession(env, user.id);
-  const headers = new Headers({ location: "/" });
-  headers.append("set-cookie", cookie("starry_session", session, 60 * 60 * 24 * 30));
-  headers.append("set-cookie", clearCookie("starry_oauth_state"));
-  return new Response(null, { status: 302, headers });
-}
 
 async function handleApi(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -109,7 +60,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     const body = await request.json().catch(() => ({})) as Record<string, string>;
     const destination = String(body.destination_url || "").trim();
     if (!isAllowedDestination(destination)) return json({ error: "只允許 http / https 網址" }, 400);
-    let slug = body.slug ? normalizeSlug(String(body.slug)) : await generateSlug(env);
+    const slug = body.slug ? normalizeSlug(String(body.slug)) : await generateSlug(env);
     if (!isValidSlug(slug)) return json({ error: "短碼需為 3–50 字元，只能使用英文小寫、數字、-、_，且不能是系統保留字" }, 400);
     const exists = await env.DB.prepare(`SELECT id FROM short_links WHERE slug = ? LIMIT 1`).bind(slug).first();
     if (exists) return json({ error: "這個短碼已被使用" }, 409);
