@@ -85,9 +85,28 @@ jobs:
           test -s /tmp/go-starry-home.html
           grep -qi "go\.starry\.phd\|短網址\|Starry" /tmp/go-starry-home.html
 
+      - name: Verify Google OAuth production routes
+        run: |
+          curl --fail --silent --show-error \
+            --dump-header /tmp/go-starry-oauth-headers.txt \
+            --output /dev/null \
+            --max-time 20 \
+            https://go.starry.phd/auth/google
+          grep -Eq '^HTTP/[^ ]+ 302' /tmp/go-starry-oauth-headers.txt
+          grep -Eiq '^location: https://accounts\.google\.com/o/oauth2/v2/auth\?' /tmp/go-starry-oauth-headers.txt
+
+          callback_status="$(curl --silent --show-error \
+            --output /tmp/go-starry-oauth-callback.json \
+            --write-out '%{http_code}' \
+            --max-time 20 \
+            https://go.starry.phd/auth/google/callback)"
+          test "$callback_status" = "400"
+          grep -qi 'OAuth state' /tmp/go-starry-oauth-callback.json
+
       - name: Deployment summary
         run: |
           echo "### go-starry production deployment completed" >> "$GITHUB_STEP_SUMMARY"
           echo "- URL: https://go.starry.phd" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Smoke test: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Home smoke test: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Google OAuth route verification: passed" >> "$GITHUB_STEP_SUMMARY"
