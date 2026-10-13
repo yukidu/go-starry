@@ -37,13 +37,9 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing GitHub secret: CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing GitHub secret: CLOUDFLARE_ACCOUNT_ID"; exit 1; }
-          test -n "$GOOGLE_CLIENT_ID" || { echo "::error::Missing GitHub secret: GOOGLE_CLIENT_ID"; exit 1; }
-          test -n "$GOOGLE_CLIENT_SECRET" || { echo "::error::Missing GitHub secret: GOOGLE_CLIENT_SECRET"; exit 1; }
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -60,16 +56,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Sync Google OAuth Worker secrets
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-        run: |
-          printf '%s' "$GOOGLE_CLIENT_ID" | npx wrangler secret put GOOGLE_CLIENT_ID
-          printf '%s' "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET
-
       - name: Deploy Worker
         run: npx wrangler deploy
         env:
@@ -85,23 +71,41 @@ jobs:
           test -s /tmp/go-starry-home.html
           grep -qi "go\.starry\.phd\|短網址\|Starry" /tmp/go-starry-home.html
 
-      - name: Verify Google OAuth production routes
+      - name: Verify Starry ID central SSO routes
         run: |
-          curl --fail --silent --show-error \
-            --dump-header /tmp/go-starry-oauth-headers.txt \
+          curl --silent --show-error \
+            --dump-header /tmp/go-starry-starry-headers.txt \
+            --output /dev/null \
+            --max-time 20 \
+            https://go.starry.phd/auth/starry
+          grep -Eq '^HTTP/[^ ]+ 302' /tmp/go-starry-starry-headers.txt
+          grep -Eiq '^location: https://id\.starry\.phd/auth/gostarry' /tmp/go-starry-starry-headers.txt
+
+          curl --silent --show-error \
+            --dump-header /tmp/go-starry-legacy-headers.txt \
             --output /dev/null \
             --max-time 20 \
             https://go.starry.phd/auth/google
-          grep -Eq '^HTTP/[^ ]+ 302' /tmp/go-starry-oauth-headers.txt
-          grep -Eiq '^location: https://accounts\.google\.com/o/oauth2/v2/auth\?' /tmp/go-starry-oauth-headers.txt
+          grep -Eq '^HTTP/[^ ]+ 302' /tmp/go-starry-legacy-headers.txt
+          grep -Eiq '^location: https://id\.starry\.phd/auth/gostarry' /tmp/go-starry-legacy-headers.txt
 
           callback_status="$(curl --silent --show-error \
-            --output /tmp/go-starry-oauth-callback.json \
+            --dump-header /tmp/go-starry-callback-headers.txt \
+            --output /dev/null \
             --write-out '%{http_code}' \
             --max-time 20 \
-            https://go.starry.phd/auth/google/callback)"
-          test "$callback_status" = "400"
-          grep -qi 'OAuth state' /tmp/go-starry-oauth-callback.json
+            https://go.starry.phd/auth/callback)"
+          test "$callback_status" = "302"
+          grep -Eiq '^location: https://go\.starry\.phd/\?starry=error' /tmp/go-starry-callback-headers.txt
+
+          central_status="$(curl --silent --show-error \
+            --output /tmp/go-starry-central-login.html \
+            --write-out '%{http_code}' \
+            --max-time 20 \
+            https://id.starry.phd/auth/gostarry)"
+          test "$central_status" = "200"
+          grep -qi 'Starry ID' /tmp/go-starry-central-login.html
+          grep -qi 'Go Starry' /tmp/go-starry-central-login.html
 
       - name: Deployment summary
         run: |
@@ -109,4 +113,4 @@ jobs:
           echo "- URL: https://go.starry.phd" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "- Home smoke test: passed" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Google OAuth route verification: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Starry ID central SSO verification: passed" >> "$GITHUB_STEP_SUMMARY"
