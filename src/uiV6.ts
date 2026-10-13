@@ -59,8 +59,20 @@ async function pasteDestinationUrlV6(){
     alert('瀏覽器未允許直接讀取剪貼簿，請長按網址欄貼上。');
   }
 }
+function isYoutubeUrlV6(value){
+  try{const host=new URL(value).hostname.toLowerCase().replace(/^www\\./,'');return host==='youtu.be'||host==='youtube.com'||host==='m.youtube.com'||host==='youtube-nocookie.com';}catch{return false;}
+}
+async function refreshExistingYoutubePreviewsV6(){
+  for(let attempt=0;attempt<12&&(!Array.isArray(currentLinks)||currentLinks.length===0);attempt++)await new Promise(resolve=>setTimeout(resolve,250));
+  if(!Array.isArray(currentLinks)||!currentLinks.length)return;
+  const targets=currentLinks.filter(x=>isYoutubeUrlV6(x.destination_url)&&(!x.preview_title||!x.preview_image_url)).slice(0,8);
+  if(!targets.length)return;
+  await Promise.allSettled(targets.map(x=>api('/api/links/'+x.id+'/metadata',{method:'POST'})));
+  await links();
+}
 document.querySelector('#pasteUrl')?.addEventListener('click',pasteDestinationUrlV6);
 hydrateTopMemberV6();
+refreshExistingYoutubePreviewsV6().catch(error=>console.warn('YouTube 預覽補抓失敗',error));
 `;
 
 export function homePage(): string {
