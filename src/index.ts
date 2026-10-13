@@ -197,7 +197,7 @@ async function syncStarryAlias(env: Env, userId: string, profileUrl: string | nu
   if (existing) {
     await env.DB.prepare(`UPDATE personal_aliases SET slug = ?, updated_at = datetime('now') WHERE id = ?`).bind(slug, existing.id).run();
   } else {
-    await env.DB.prepare(`INSERT INTO personal_aliases (id, owner_user_id, slug, kind, created_at, updated_at) VALUES (?, ?, ?, 'starry', datetime('now'), datetime('now'))`).bind(crypto.randomUUID(), user.id, slug).run();
+    await env.DB.prepare(`INSERT INTO personal_aliases (id, owner_user_id, slug, kind, created_at, updated_at) VALUES (?, ?, ?, 'starry', datetime('now'), datetime('now'))`).bind(crypto.randomUUID(), userId, slug).run();
   }
 }
 
