@@ -2,13 +2,16 @@ import QRCode from "qrcode-svg";
 import type { Env, PersonalAlias, ShortLink, User } from "./types";
 import { appJs, homePage, simplePage, styles } from "./ui";
 import { iconPng, iconSvg, manifestJson, serviceWorkerJs } from "./pwa";
-import { clearCookie, html, isAllowedDestination, isValidNamespace, isValidSlug, json, normalizeSlug, parseCookies, randomToken, sha256 } from "./security";
+import { clearCookie, html, isAllowedDestination, isValidNamespace, isValidSlug, json, normalizeSlug, parseCookies, sha256 } from "./security";
 import { getUserFromRequest, listLinks, revokeSession } from "./db";
 import { enrichStarryUser, finishStarryAuth, startStarryAuth } from "./starrySso";
 
 const RATE_WINDOW_MINUTES = 10;
 const RATE_MAX_CREATES = 30;
 const MAX_CUSTOM_ALIASES = 4;
+const RANDOM_SLUG_ALPHABET = "AFHKRWY23456789";
+const RANDOM_SLUG_LENGTH = 4;
+const RANDOM_SLUG_ATTEMPTS = 64;
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -100,6 +103,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     const namespace = normalizeSlug(String(body.namespace_slug || ""));
     if (namespace && !(await ownsAlias(env, user.id, namespace))) return json({ error: "這組個人化網址不屬於你的帳號" }, 403);
     const slug = body.slug ? normalizeSlug(String(body.slug)) : await generateSlug(env);
+    if (!slug) return json({ error: "短碼暫時無法產生，請再試一次" }, 503);
     if (!isValidSlug(slug)) return json({ error: "短碼需為 3–50 字元，只能使用英文小寫、數字、-、_，且不能是系統保留字" }, 400);
     const exists = await env.DB.prepare(`SELECT id FROM short_links WHERE lower(slug) = lower(?) LIMIT 1`).bind(slug).first();
     if (exists) return json({ error: "這個短碼已被使用" }, 409);
@@ -242,17 +246,16 @@ function summarizeUa(ua: string): { device: string; browser: string; os: string;
   return { device, browser, os, summary: `${device}/${browser}/${os}` };
 }
 
-async function generateSlug(env: Env): Promise<string> {
-  const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const bytes = new Uint8Array(7);
+async function generateSlug(env: Env): Promise<string | null> {
+  for (let attempt = 0; attempt < RANDOM_SLUG_ATTEMPTS; attempt++) {
+    const bytes = new Uint8Array(RANDOM_SLUG_LENGTH);
     crypto.getRandomValues(bytes);
     let slug = "";
-    for (const b of bytes) slug += alphabet[b % alphabet.length];
+    for (const b of bytes) slug += RANDOM_SLUG_ALPHABET[b % RANDOM_SLUG_ALPHABET.length];
     const exists = await env.DB.prepare(`SELECT 1 FROM short_links WHERE lower(slug) = lower(?) LIMIT 1`).bind(slug).first();
     if (!exists) return slug;
   }
-  return randomToken(8).slice(0, 10).toLowerCase();
+  return null;
 }
 
 async function checkCreateRate(env: Env, userId: string): Promise<boolean> {
