@@ -4,7 +4,7 @@ const RESERVED = new Set([
   "sw.js", "styles.css", "app.js", "icon.svg", "icon-192.png", "icon-512.png"
 ]);
 
-const UI_ASSET_VERSION = "v7";
+const UI_ASSET_VERSION = "v8";
 
 export function isValidSlug(value: string): boolean {
   const slug = value.trim().toLowerCase();
