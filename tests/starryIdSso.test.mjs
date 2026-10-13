@@ -53,6 +53,9 @@ test('member identity shows central rank and links avatar and name to public Sta
   assert.match(source, /starry_rank/);
   assert.match(source, /starry_profile_url/);
   assert.match(source, /https:\/\/id\.starry\.phd/);
+  assert.match(source, /amwayId/);
+  assert.match(source, /centralProfileSlug/);
+  assert.match(source, /const desiredSlug = amwaySlug \|\| String\(card\.cardNumber/);
   assert.match(index, /enrichStarryUser/);
   assert.match(ui, /id="meRank"/);
   assert.match(ui, /id="avatarLink"/);
