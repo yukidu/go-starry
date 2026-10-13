@@ -16,10 +16,10 @@ interface CentralMember {
   name: string | null;
   avatar: string | null;
   googleAvatar: string | null;
-  membershipStatus: string;
+  membershipStatus: string | null;
 }
 
-interface CentralPublicProfile {
+interface CentralProfileSnapshot extends CentralMember {
   approvedRank: string | null;
   rank: string | null;
 }
@@ -77,6 +77,46 @@ async function readCentralMember(env: Env, userId: string): Promise<CentralMembe
     WHERE u.id = ?
     LIMIT 1
   `).bind(APP_ID, userId).first<CentralMember>();
+}
+
+async function readCentralProfile(env: Env, userId: string): Promise<CentralProfileSnapshot | null> {
+  return env.STARRY_ID_DB.prepare(`
+    SELECT
+      u.id,
+      u.primaryEmail,
+      u.status,
+      p.name,
+      p.avatar,
+      p.googleAvatar,
+      p.approvedRank,
+      p.rank,
+      am.status AS membershipStatus
+    FROM users u
+    LEFT JOIN profiles p ON p.userId = u.id
+    LEFT JOIN app_memberships am ON am.userId = u.id AND am.appId = ?
+    WHERE u.id = ?
+    LIMIT 1
+  `).bind(APP_ID, userId).first<CentralProfileSnapshot>();
+}
+
+async function findCentralProfileByEmail(env: Env, email: string): Promise<CentralProfileSnapshot | null> {
+  return env.STARRY_ID_DB.prepare(`
+    SELECT
+      u.id,
+      u.primaryEmail,
+      u.status,
+      p.name,
+      p.avatar,
+      p.googleAvatar,
+      p.approvedRank,
+      p.rank,
+      am.status AS membershipStatus
+    FROM users u
+    LEFT JOIN profiles p ON p.userId = u.id
+    LEFT JOIN app_memberships am ON am.userId = u.id AND am.appId = ?
+    WHERE lower(trim(u.primaryEmail)) = lower(trim(?))
+    LIMIT 1
+  `).bind(APP_ID, email).first<CentralProfileSnapshot>();
 }
 
 async function ensureCentralPublicCard(env: Env, starryUserId: string): Promise<string | null> {
@@ -142,25 +182,44 @@ async function ensureCentralPublicCard(env: Env, starryUserId: string): Promise<
 export async function enrichStarryUser(env: Env, user: User): Promise<User> {
   try {
     await ensureLocalSchema(env);
+
     const mapping = await env.DB.prepare(`
       SELECT starry_user_id
       FROM starry_identities
       WHERE local_user_id = ?
       LIMIT 1
     `).bind(user.id).first<{ starry_user_id: string }>();
-    if (!mapping?.starry_user_id) return user;
 
-    const central = await env.STARRY_ID_DB.prepare(`
-      SELECT approvedRank, rank
-      FROM profiles
-      WHERE userId = ?
-      LIMIT 1
-    `).bind(mapping.starry_user_id).first<CentralPublicProfile>();
+    let central = mapping?.starry_user_id
+      ? await readCentralProfile(env, mapping.starry_user_id)
+      : await findCentralProfileByEmail(env, user.email);
 
-    const rank = String(central?.approvedRank || central?.rank || "").trim() || null;
-    const slug = await ensureCentralPublicCard(env, mapping.starry_user_id);
+    if (!central || central.status !== "active" || central.membershipStatus === "inactive") return user;
+
+    if (!mapping?.starry_user_id) {
+      await env.DB.prepare(`
+        INSERT OR IGNORE INTO starry_identities (starry_user_id, local_user_id, linked_at)
+        VALUES (?, ?, datetime('now'))
+      `).bind(central.id, user.id).run();
+    }
+
+    const displayName = String(central.name || user.display_name || "").trim() || user.display_name;
+    const avatarUrl = String(central.avatar || central.googleAvatar || user.avatar_url || "").trim() || user.avatar_url;
+    const rank = String(central.approvedRank || central.rank || "").trim() || null;
+    const slug = await ensureCentralPublicCard(env, central.id);
+
+    if (displayName !== user.display_name || avatarUrl !== user.avatar_url) {
+      await env.DB.prepare(`
+        UPDATE users
+        SET display_name = ?, avatar_url = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(displayName || null, avatarUrl || null, user.id).run();
+    }
+
     return {
       ...user,
+      display_name: displayName || null,
+      avatar_url: avatarUrl || null,
       starry_rank: rank,
       starry_profile_url: slug ? `${STARRY_ID_ORIGIN}/${encodeURIComponent(slug)}` : null
     };
