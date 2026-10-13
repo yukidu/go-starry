@@ -14,18 +14,36 @@ const OLD_ALIAS_HELP = `<p class="muted" style="margin-top:-7px">可選擇 Starr
 const OLD_URL_FIELD = `<div><label>原始網址</label><input name="destination_url" type="url" required placeholder="https://example.com/very-long-url"></div>`;
 const NEW_URL_FIELD = `<div><label>原始網址</label><div class="url-input-row"><input id="destinationUrl" name="destination_url" type="url" required inputmode="url" placeholder="https://example.com/very-long-url"><button id="pasteUrl" class="btn secondary paste-url-btn" type="button">貼上網址</button></div></div>`;
 
+const OLD_MEMBER_CARD = `<div class="card member-strip"><div><div class="identity"><a id="avatarLink" class="identity-link" hidden><img id="avatar" class="avatar" alt="會員大頭照"></a><div class="identity-text"><a id="nameLink" class="identity-link"><span id="meName"></span></a><span id="meRank" class="rank" hidden></span></div></div><div id="meEmail" class="muted" style="font-size:12px;margin-top:5px"></div></div><button id="logout" class="btn secondary small">登出</button></div>`;
+
+const OLD_STATUS_DECL = `const statusText=x.status==='active'?'啟用中':'已停用';`;
+const OLD_STATUS_BADGE = `<span class="badge '+(x.status==='active'?'':'off')+'">'+statusText+'</span>`;
+const OLD_TOGGLE_BUTTON = `<button class="btn secondary small" data-toggle="'+esc(x.id)+'">'+(x.status==='active'?'停用':'啟用')+'</button>`;
+const OLD_TOGGLE_HANDLER = `if(b.dataset.toggle){await api('/api/links/'+b.dataset.toggle+'/toggle',{method:'POST'});await links()}`;
+const OLD_PAGE_LOGOUT_HANDLER = `$('#logout')?.addEventListener('click',async()=>{await api('/api/logout',{method:'POST'});location.reload()});`;
+
 function enhanceMarkup(markup: string): string {
   return markup
     .replace(OLD_TOP_ACTIONS, MEMBER_TOP)
+    .replace(OLD_MEMBER_CARD, "")
     .replace(OLD_ALIAS_HELP, "")
     .replace(OLD_URL_FIELD, NEW_URL_FIELD);
 }
 
+function stripDeprecatedLinkControls(script: string): string {
+  return script
+    .replace(OLD_STATUS_DECL, "")
+    .replace(OLD_STATUS_BADGE, "")
+    .replace(OLD_TOGGLE_BUTTON, "")
+    .replace(OLD_TOGGLE_HANDLER, "")
+    .replace(OLD_PAGE_LOGOUT_HANDLER, "");
+}
+
 export const styles = `${baseStyles}
-.nav-member{margin-left:auto;min-width:0;max-width:min(240px,36vw);display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:14px;text-decoration:none;color:#1f2937;transition:background-color .15s ease,transform .15s ease}.nav-member[hidden]{display:none}.nav-member:hover{background:#f1f5f9}.nav-member:active{transform:scale(.98)}.nav-member-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;object-fit:cover;background:#eef1f7;box-shadow:0 0 0 1px #e5e7eb}.nav-member-copy{display:flex;min-width:0;flex-direction:column;align-items:flex-start;line-height:1.08}.nav-member-name,.nav-member-rank{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nav-member-name{font-size:13px;font-weight:900}.nav-member-rank{margin-top:3px;font-size:10px;font-weight:850;color:var(--accent)}.hamburger{margin-left:2px}.url-input-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}.url-input-row input{min-width:0}.paste-url-btn{white-space:nowrap;padding-inline:14px}@media(max-width:680px){.nav-row{gap:6px}.brand-domain{display:none}.nav-member{margin-left:auto;max-width:155px;padding:3px 4px;gap:6px}.nav-member-avatar{width:32px;height:32px;flex-basis:32px}.nav-member-name{font-size:12px}.nav-member-rank{font-size:9px}.nav-member-copy{max-width:105px}.hamburger{width:42px;flex-basis:42px}}@media(max-width:390px){.brand-name{font-size:14px}.brand-logo{width:33px;height:33px}.brand-link{gap:7px}.nav-member{max-width:128px}.nav-member-copy{max-width:82px}.nav-member-avatar{width:30px;height:30px;flex-basis:30px}.paste-url-btn{padding-inline:11px}}
+.nav-member{margin-left:auto;min-width:0;max-width:min(240px,36vw);display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:14px;text-decoration:none;color:#1f2937;transition:background-color .15s ease,transform .15s ease}.nav-member[hidden]{display:none}.nav-member:hover{background:#f1f5f9}.nav-member:active{transform:scale(.98)}.nav-member-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;object-fit:cover;background:#eef1f7;box-shadow:0 0 0 1px #e5e7eb}.nav-member-copy{display:flex;min-width:0;flex-direction:column;align-items:flex-start;line-height:1.08}.nav-member-name,.nav-member-rank{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nav-member-name{font-size:13px;font-weight:900}.nav-member-rank{margin-top:3px;font-size:10px;font-weight:850;color:var(--accent)}.hamburger{margin-left:2px}.url-input-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}.url-input-row input{min-width:0}.paste-url-btn{white-space:nowrap;padding-inline:14px}.member-strip,.badge,[data-toggle]{display:none!important}@media(max-width:680px){.nav-row{gap:6px}.brand-domain{display:none}.nav-member{margin-left:auto;max-width:155px;padding:3px 4px;gap:6px}.nav-member-avatar{width:32px;height:32px;flex-basis:32px}.nav-member-name{font-size:12px}.nav-member-rank{font-size:9px}.nav-member-copy{max-width:105px}.hamburger{width:42px;flex-basis:42px}}@media(max-width:390px){.brand-name{font-size:14px}.brand-logo{width:33px;height:33px}.brand-link{gap:7px}.nav-member{max-width:128px}.nav-member-copy{max-width:82px}.nav-member-avatar{width:30px;height:30px;flex-basis:30px}.paste-url-btn{padding-inline:11px}}
 `;
 
-export const appJs = baseAppJs + `
+export const appJs = stripDeprecatedLinkControls(baseAppJs) + `
 async function hydrateTopMemberV6(){
   const wrap=document.querySelector('#navMemberLink');
   if(!wrap)return;
