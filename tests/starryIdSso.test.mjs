@@ -44,6 +44,22 @@ test('public login UI points to Starry ID', async () => {
   assert.match(ui, /使用 Starry ID 登入/);
 });
 
+test('member identity shows central rank and links avatar and name to public Starry ID card', async () => {
+  const source = await read('src/starrySso.ts');
+  const index = await read('src/index.ts');
+  const ui = await read('src/ui.ts');
+  assert.match(source, /approvedRank/);
+  assert.match(source, /public_cards/);
+  assert.match(source, /starry_rank/);
+  assert.match(source, /starry_profile_url/);
+  assert.match(source, /https:\/\/id\.starry\.phd/);
+  assert.match(index, /enrichStarryUser/);
+  assert.match(ui, /id="meRank"/);
+  assert.match(ui, /id="avatarLink"/);
+  assert.match(ui, /id="nameLink"/);
+  assert.match(ui, /starry_profile_url/);
+});
+
 test('production workflow no longer depends on a Go Starry Google client secret', async () => {
   const workflow = await read('.github/workflows/deploy.yml');
   assert.match(workflow, /Verify Starry ID central SSO routes/);
