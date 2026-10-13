@@ -171,7 +171,7 @@ async function recordClick(request: Request, env: Env, link: ShortLink): Promise
   try {
     const ua = request.headers.get("user-agent") || "";
     const ip = request.headers.get("cf-connecting-ip") || "";
-    const ipHash = ip ? await sha256(`${env.IP_HASH_SALT || ""}:${ip}`) : null;
+    const ipHash = ip && env.IP_HASH_SALT ? await sha256(`${env.IP_HASH_SALT}:${ip}`) : null;
     const referrer = request.headers.get("referer");
     const cf = (request as Request & { cf?: { country?: string } }).cf;
     const country = cf?.country || null;
