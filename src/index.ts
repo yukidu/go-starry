@@ -3,7 +3,7 @@ import type { Env, ShortLink } from "./types";
 import { appJs, homePage, simplePage, styles } from "./ui";
 import { clearCookie, html, isAllowedDestination, isValidSlug, json, normalizeSlug, parseCookies, randomToken, sha256 } from "./security";
 import { getUserFromRequest, listLinks, revokeSession } from "./db";
-import { finishStarryAuth, startStarryAuth } from "./starrySso";
+import { enrichStarryUser, finishStarryAuth, startStarryAuth } from "./starrySso";
 
 const RATE_WINDOW_MINUTES = 10;
 const RATE_MAX_CREATES = 30;
@@ -40,7 +40,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   const path = url.pathname;
   if (request.method === "GET" && path === "/api/me") {
     const user = await getUserFromRequest(request, env);
-    return json({ user });
+    return json({ user: user ? await enrichStarryUser(env, user) : null });
   }
 
   if (request.method === "POST" && path === "/api/logout") {
