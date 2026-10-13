@@ -12,6 +12,8 @@ export interface User {
   display_name: string | null;
   avatar_url: string | null;
   status: string;
+  starry_rank?: string | null;
+  starry_profile_url?: string | null;
 }
 
 export interface ShortLink {
