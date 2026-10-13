@@ -6,14 +6,14 @@ const security = await readFile(new URL('../src/security.ts', import.meta.url), 
 const pwa = await readFile(new URL('../src/pwa.ts', import.meta.url), 'utf8');
 
 test('HTML cache-busts mutable CSS and JS assets', () => {
-  assert.match(security, /UI_ASSET_VERSION\s*=\s*"v4"/);
-  assert.match(security, /href=\\"\/styles\.css\?\$\{UI_ASSET_VERSION\}\\"/);
-  assert.match(security, /src=\\"\/app\.js\?\$\{UI_ASSET_VERSION\}\\"/);
-  assert.match(security, /"cache-control":\s*"no-store"/);
+  assert.ok(security.includes('const UI_ASSET_VERSION = "v4"'));
+  assert.ok(security.includes('href="/styles.css?${UI_ASSET_VERSION}"'));
+  assert.ok(security.includes('src="/app.js?${UI_ASSET_VERSION}"'));
+  assert.ok(security.includes('"cache-control": "no-store"'));
 });
 
 test('PWA shell cache uses the same v4 mutable assets', () => {
-  assert.match(pwa, /starry-anywhere-door-v4/);
-  assert.match(pwa, /\/styles\.css\?v4/);
-  assert.match(pwa, /\/app\.js\?v4/);
+  assert.ok(pwa.includes("starry-anywhere-door-v4"));
+  assert.ok(pwa.includes("/styles.css?v4"));
+  assert.ok(pwa.includes("/app.js?v4"));
 });
