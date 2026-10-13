@@ -1,6 +1,6 @@
 import QRCode from "qrcode-svg";
 import type { Env, PersonalAlias, ShortLink, User } from "./types";
-import { appJs, homePage, simplePage, styles } from "./ui";
+import { appJs, homePage, simplePage, styles } from "./uiV6";
 import { iconPng, iconSvg, manifestJson, serviceWorkerJs } from "./pwa";
 import { clearCookie, html, isAllowedDestination, isValidNamespace, isValidSlug, json, normalizeSlug, parseCookies, sha256 } from "./security";
 import { getUserFromRequest, listLinks, revokeSession } from "./db";
@@ -298,7 +298,54 @@ function metaContent(htmlText: string, names: string[]): string | null {
   return null;
 }
 
+function youtubeVideoId(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    let id = "";
+    if (host === "youtu.be") id = url.pathname.split("/").filter(Boolean)[0] || "";
+    else if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
+      if (url.pathname === "/watch") id = url.searchParams.get("v") || "";
+      else {
+        const parts = url.pathname.split("/").filter(Boolean);
+        if (["shorts", "live", "embed"].includes(parts[0] || "")) id = parts[1] || "";
+      }
+    }
+    return /^[A-Za-z0-9_-]{6,20}$/.test(id) ? id : null;
+  } catch { return null; }
+}
+
+async function readYouTubeMetadata(destination: string): Promise<{ title: string | null; image: string | null } | null> {
+  const id = youtubeVideoId(destination);
+  if (!id) return null;
+  const image = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+  try {
+    const canonical = `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
+    const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(canonical)}&format=json`;
+    const response = await fetch(endpoint, {
+      headers: { "accept": "application/json", "user-agent": "Mozilla/5.0 (compatible; StarryAnywhereDoor/1.0; +https://go.starry.phd/)" },
+      signal: AbortSignal.timeout(4500)
+    });
+    if (response.ok) {
+      const data = await response.json() as { title?: unknown; thumbnail_url?: unknown };
+      const title = String(data.title || "").trim().slice(0, 300) || null;
+      const remoteImage = String(data.thumbnail_url || "").trim();
+      if (remoteImage) {
+        const resolved = safeMetadataUrl(remoteImage);
+        if (resolved?.protocol === "https:") return { title, image: resolved.toString().slice(0, 2000) };
+      }
+      return { title, image };
+    }
+  } catch (error) {
+    console.warn("youtube oEmbed metadata failed", error);
+  }
+  return { title: null, image };
+}
+
 async function readDestinationMetadata(destination: string): Promise<{ title: string | null; image: string | null }> {
+  const youtube = await readYouTubeMetadata(destination);
+  if (youtube) return youtube;
+
   let current = safeMetadataUrl(destination);
   if (!current) return { title: null, image: null };
   try {
