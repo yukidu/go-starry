@@ -1,0 +1,5 @@
+GOOGLE_CLIENT_ID=replace-me.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=replace-me
+IP_HASH_SALT=replace-with-random-secret
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
