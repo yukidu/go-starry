@@ -6,6 +6,7 @@ const STARRY_ID_ORIGIN = "https://id.starry.phd";
 const APP_ID = "gostarry";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const CODE_RE = /^[A-Za-z0-9_-]{30,}$/;
+const RESERVED_PROFILE_SLUGS = new Set(["api", "robots.txt", "login", "logout", "admin", "manifest.webmanifest", "favicon.ico", "assets"]);
 let localSchemaReady: Promise<void> | null = null;
 
 interface CentralMember {
@@ -21,7 +22,14 @@ interface CentralMember {
 interface CentralPublicProfile {
   approvedRank: string | null;
   rank: string | null;
-  slug: string | null;
+}
+
+function centralProfileSlug(value: unknown): string {
+  const slug = String(value || "").trim().toLowerCase().normalize("NFKC")
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  return RESERVED_PROFILE_SLUGS.has(slug) ? "" : slug;
 }
 
 export function startStarryAuth(): Response {
@@ -72,32 +80,36 @@ async function readCentralMember(env: Env, userId: string): Promise<CentralMembe
 }
 
 async function ensureCentralPublicCard(env: Env, starryUserId: string): Promise<string | null> {
+  type Card = { seq: number; slug: string; cardNumber: string };
+  const now = Date.now();
+  const profile = await env.STARRY_ID_DB.prepare(`
+    SELECT amwayId FROM profiles WHERE userId = ? LIMIT 1
+  `).bind(starryUserId).first<{ amwayId: string | null }>();
+
   let card = await env.STARRY_ID_DB.prepare(`
     SELECT seq, slug, cardNumber
     FROM public_cards
     WHERE userId = ?
     LIMIT 1
-  `).bind(starryUserId).first<{ seq: number; slug: string; cardNumber: string }>();
+  `).bind(starryUserId).first<Card>();
 
-  if (card?.slug) return String(card.slug).trim() || null;
-
-  const now = Date.now();
-  const pending = `pending-${crypto.randomUUID()}`;
-  try {
-    await env.STARRY_ID_DB.prepare(`
-      INSERT INTO public_cards (userId, slug, cardNumber, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(starryUserId, pending, pending, now, now).run();
-  } catch {
-    // A concurrent Starry ID request may have created the same member card first.
+  if (!card) {
+    const pending = `pending-${crypto.randomUUID()}`;
+    try {
+      await env.STARRY_ID_DB.prepare(`
+        INSERT INTO public_cards (userId, slug, cardNumber, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(starryUserId, pending, pending, now, now).run();
+    } catch {
+      // A concurrent Starry ID request may have created the same member card first.
+    }
+    card = await env.STARRY_ID_DB.prepare(`
+      SELECT seq, slug, cardNumber
+      FROM public_cards
+      WHERE userId = ?
+      LIMIT 1
+    `).bind(starryUserId).first<Card>();
   }
-
-  card = await env.STARRY_ID_DB.prepare(`
-    SELECT seq, slug, cardNumber
-    FROM public_cards
-    WHERE userId = ?
-    LIMIT 1
-  `).bind(starryUserId).first<{ seq: number; slug: string; cardNumber: string }>();
   if (!card) return null;
 
   if (String(card.slug || "").startsWith("pending-") || String(card.cardNumber || "").startsWith("pending-")) {
@@ -107,7 +119,21 @@ async function ensureCentralPublicCard(env: Env, starryUserId: string): Promise<
       SET slug = ?, cardNumber = ?, updatedAt = ?
       WHERE userId = ?
     `).bind(number, number, now, starryUserId).run();
-    return number;
+    card = { ...card, slug: number, cardNumber: number };
+  }
+
+  const amwaySlug = centralProfileSlug(profile?.amwayId);
+  const desiredSlug = amwaySlug || String(card.cardNumber || "").trim();
+  if (desiredSlug && desiredSlug !== card.slug) {
+    const owner = await env.STARRY_ID_DB.prepare(`
+      SELECT userId FROM public_cards WHERE slug = ? LIMIT 1
+    `).bind(desiredSlug).first<{ userId: string }>();
+    if (!owner || String(owner.userId) === starryUserId) {
+      await env.STARRY_ID_DB.prepare(`
+        UPDATE public_cards SET slug = ?, updatedAt = ? WHERE userId = ?
+      `).bind(desiredSlug, now, starryUserId).run();
+      card = { ...card, slug: desiredSlug };
+    }
   }
 
   return String(card.slug || "").trim() || null;
@@ -125,15 +151,14 @@ export async function enrichStarryUser(env: Env, user: User): Promise<User> {
     if (!mapping?.starry_user_id) return user;
 
     const central = await env.STARRY_ID_DB.prepare(`
-      SELECT p.approvedRank, p.rank, pc.slug
-      FROM profiles p
-      LEFT JOIN public_cards pc ON pc.userId = p.userId
-      WHERE p.userId = ?
+      SELECT approvedRank, rank
+      FROM profiles
+      WHERE userId = ?
       LIMIT 1
     `).bind(mapping.starry_user_id).first<CentralPublicProfile>();
 
     const rank = String(central?.approvedRank || central?.rank || "").trim() || null;
-    const slug = String(central?.slug || "").trim() || await ensureCentralPublicCard(env, mapping.starry_user_id);
+    const slug = await ensureCentralPublicCard(env, mapping.starry_user_id);
     return {
       ...user,
       starry_rank: rank,
