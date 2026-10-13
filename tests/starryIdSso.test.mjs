@@ -27,6 +27,16 @@ test('central callback consumes one-time gostarry ticket and preserves local app
   assert.match(source, /starry_session/);
 });
 
+test('existing Go Starry sessions can recover central Starry profile by exact email', async () => {
+  const source = await read('src/starrySso.ts');
+  assert.match(source, /findCentralProfileByEmail/);
+  assert.match(source, /lower\(trim\(u\.primaryEmail\)\) = lower\(trim\(\?\)\)/);
+  assert.match(source, /INSERT OR IGNORE INTO starry_identities/);
+  assert.match(source, /central\.avatar \|\| central\.googleAvatar/);
+  assert.match(source, /central\.approvedRank \|\| central\.rank/);
+  assert.match(source, /UPDATE users\s+SET display_name = \?, avatar_url = \?/);
+});
+
 test('Go Starry keeps business data in its own D1 while binding central Starry ID D1', async () => {
   const wrangler = await read('wrangler.toml');
   const migration = await read('migrations/0002_starry_id_sso.sql');
