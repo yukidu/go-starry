@@ -4,6 +4,8 @@ const RESERVED = new Set([
   "sw.js", "styles.css", "app.js", "icon.svg", "icon-192.png", "icon-512.png"
 ]);
 
+const UI_ASSET_VERSION = "v4";
+
 export function isValidSlug(value: string): boolean {
   const slug = value.trim().toLowerCase();
   return /^[a-z0-9][a-z0-9_-]{2,49}$/.test(slug) && !RESERVED.has(slug);
@@ -73,8 +75,14 @@ export function json(data: unknown, status = 200, headers: HeadersInit = {}): Re
   });
 }
 
+function versionUiAssets(body: string): string {
+  return body
+    .replace('href="/styles.css"', `href="/styles.css?${UI_ASSET_VERSION}"`)
+    .replace('src="/app.js"', `src="/app.js?${UI_ASSET_VERSION}"`);
+}
+
 export function html(body: string, status = 200): Response {
-  return new Response(body, {
+  return new Response(versionUiAssets(body), {
     status,
     headers: {
       "content-type": "text/html; charset=utf-8",
