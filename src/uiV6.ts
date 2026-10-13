@@ -16,18 +16,28 @@ const NEW_URL_FIELD = `<div><label>原始網址</label><div class="url-input-row
 
 const OLD_MEMBER_CARD = `<div class="card member-strip"><div><div class="identity"><a id="avatarLink" class="identity-link" hidden><img id="avatar" class="avatar" alt="會員大頭照"></a><div class="identity-text"><a id="nameLink" class="identity-link"><span id="meName"></span></a><span id="meRank" class="rank" hidden></span></div></div><div id="meEmail" class="muted" style="font-size:12px;margin-top:5px"></div></div><button id="logout" class="btn secondary small">登出</button></div>`;
 
+const OLD_EDIT_FIELDS = `<div style="margin-top:13px"><label>短碼</label><input id="editSlug" minlength="3" maxlength="50" required></div><div id="editCurrent" class="alias-preview"></div>`;
+const NEW_EDIT_FIELDS = `<div style="margin-top:13px"><label>短碼</label><input id="editSlug" minlength="3" maxlength="50" required></div><div style="margin-top:13px"><label>來源網址</label><input id="editDestination" type="url" required inputmode="url"></div><div id="editCurrent" class="alias-preview"></div>`;
+
 const OLD_STATUS_DECL = `const statusText=x.status==='active'?'啟用中':'已停用';`;
 const OLD_STATUS_BADGE = `<span class="badge '+(x.status==='active'?'':'off')+'">'+statusText+'</span>`;
 const OLD_TOGGLE_BUTTON = `<button class="btn secondary small" data-toggle="'+esc(x.id)+'">'+(x.status==='active'?'停用':'啟用')+'</button>`;
 const OLD_TOGGLE_HANDLER = `if(b.dataset.toggle){await api('/api/links/'+b.dataset.toggle+'/toggle',{method:'POST'});await links()}`;
 const OLD_PAGE_LOGOUT_HANDLER = `$('#logout')?.addEventListener('click',async()=>{await api('/api/logout',{method:'POST'});location.reload()});`;
 
+const OLD_OPEN_EDIT = `function openEdit(id){const link=currentLinks.find(x=>x.id===id);if(!link)return;const editId=$('#editId'),editSlug=$('#editSlug'),editCurrent=$('#editCurrent');if(editId)editId.value=id;if(editSlug)editSlug.value=link.slug;renderAliasOptions($('#editAlias'),link.namespace_slug||'');if(editCurrent)editCurrent.textContent=shortUrl(link);openModal('#editModal')}`;
+const NEW_OPEN_EDIT = `function openEdit(id){const link=currentLinks.find(x=>x.id===id);if(!link)return;const editId=$('#editId'),editSlug=$('#editSlug'),editDestination=$('#editDestination'),editCurrent=$('#editCurrent');if(editId)editId.value=id;if(editSlug)editSlug.value=link.slug;if(editDestination)editDestination.value=link.destination_url||'';renderAliasOptions($('#editAlias'),link.namespace_slug||'');if(editCurrent)editCurrent.textContent=shortUrl(link);openModal('#editModal')}`;
+
+const OLD_EDIT_SUBMIT = `$('#editForm')?.addEventListener('submit',async e=>{e.preventDefault();const id=$('#editId')?.value;if(!id)return;try{await api('/api/links/'+id,{method:'PUT',body:JSON.stringify({slug:$('#editSlug')?.value||'',namespace_slug:$('#editAlias')?.value||''})});closeModal('#editModal');await links()}catch(err){alert(err.message)}})`;
+const NEW_EDIT_SUBMIT = `$('#editForm')?.addEventListener('submit',async e=>{e.preventDefault();const id=$('#editId')?.value;if(!id)return;try{await api('/api/links/'+id,{method:'PUT',body:JSON.stringify({slug:$('#editSlug')?.value||'',namespace_slug:$('#editAlias')?.value||'',destination_url:$('#editDestination')?.value||''})});closeModal('#editModal');await links()}catch(err){alert(err.message)}})`;
+
 function enhanceMarkup(markup: string): string {
   return markup
     .replace(OLD_TOP_ACTIONS, MEMBER_TOP)
     .replace(OLD_MEMBER_CARD, "")
     .replace(OLD_ALIAS_HELP, "")
-    .replace(OLD_URL_FIELD, NEW_URL_FIELD);
+    .replace(OLD_URL_FIELD, NEW_URL_FIELD)
+    .replace(OLD_EDIT_FIELDS, NEW_EDIT_FIELDS);
 }
 
 function stripDeprecatedLinkControls(script: string): string {
@@ -36,7 +46,9 @@ function stripDeprecatedLinkControls(script: string): string {
     .replace(OLD_STATUS_BADGE, "")
     .replace(OLD_TOGGLE_BUTTON, "")
     .replace(OLD_TOGGLE_HANDLER, "")
-    .replace(OLD_PAGE_LOGOUT_HANDLER, "");
+    .replace(OLD_PAGE_LOGOUT_HANDLER, "")
+    .replace(OLD_OPEN_EDIT, NEW_OPEN_EDIT)
+    .replace(OLD_EDIT_SUBMIT, NEW_EDIT_SUBMIT);
 }
 
 export const styles = `${baseStyles}
