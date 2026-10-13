@@ -1,5 +1,6 @@
 import type { Env, ShortLink, User } from "./types";
 import { randomToken, sha256 } from "./security";
+import { hydrateYouTubePreviews } from "./youtubePreview";
 
 export async function getUserFromRequest(request: Request, env: Env): Promise<User | null> {
   const cookieHeader = request.headers.get("cookie") || "";
@@ -69,5 +70,5 @@ export async function listLinks(env: Env, userId: string): Promise<ShortLink[]> 
            expires_at, redirect_type, click_count, last_clicked_at
     FROM short_links WHERE owner_user_id = ? ORDER BY created_at DESC LIMIT 500
   `).bind(userId).all<ShortLink>();
-  return result.results || [];
+  return hydrateYouTubePreviews(env, result.results || []);
 }
