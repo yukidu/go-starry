@@ -10,5 +10,5 @@ database_id = "6e023536-5f23-47d3-b18c-027e5ca09311"
 migrations_dir = "migrations"
 
 [[routes]]
-pattern = "go.starry.phd/*"
-zone_name = "starry.phd"
+pattern = "go.starry.phd"
+custom_domain = true
