@@ -1,5 +1,5 @@
-interface D1Meta { changes?: number; [key: string]: unknown }
-interface D1Result<T = unknown> { results?: T[]; success?: boolean; meta?: D1Meta }
+interface D1Meta { changes: number; [key: string]: unknown }
+interface D1Result<T = unknown> { results?: T[]; success?: boolean; meta: D1Meta }
 interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement;
   first<T = Record<string, unknown>>(): Promise<T | null>;
