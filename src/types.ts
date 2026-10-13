@@ -16,13 +16,26 @@ export interface User {
   starry_profile_url?: string | null;
 }
 
+export interface PersonalAlias {
+  id: string;
+  owner_user_id: string;
+  slug: string;
+  kind: 'starry' | 'custom';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ShortLink {
   id: string;
   owner_user_id: string;
   slug: string;
+  namespace_slug: string;
   destination_url: string;
   title: string | null;
   note: string | null;
+  preview_title: string | null;
+  preview_image_url: string | null;
+  metadata_checked_at: string | null;
   status: string;
   created_at: string;
   updated_at: string;

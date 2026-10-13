@@ -1,11 +1,17 @@
 const RESERVED = new Set([
   "admin", "api", "auth", "login", "logout", "signup", "privacy", "terms",
-  "dashboard", "settings", "report", "robots.txt", "favicon.ico"
+  "dashboard", "settings", "report", "robots.txt", "favicon.ico", "manifest.webmanifest",
+  "sw.js", "styles.css", "app.js", "icon.svg", "icon-192.png", "icon-512.png"
 ]);
 
 export function isValidSlug(value: string): boolean {
   const slug = value.trim().toLowerCase();
   return /^[a-z0-9][a-z0-9_-]{2,49}$/.test(slug) && !RESERVED.has(slug);
+}
+
+export function isValidNamespace(value: string): boolean {
+  const slug = value.trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9_-]{1,31}$/.test(slug) && !RESERVED.has(slug);
 }
 
 export function normalizeSlug(value: string): string {
@@ -73,7 +79,7 @@ export function html(body: string, status = 200): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "content-security-policy": "default-src 'self'; img-src 'self' https: data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://accounts.google.com",
+      "content-security-policy": "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://accounts.google.com",
       "referrer-policy": "strict-origin-when-cross-origin",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",

@@ -64,7 +64,8 @@ export async function upsertGoogleUser(env: Env, profile: { sub: string; email: 
 
 export async function listLinks(env: Env, userId: string): Promise<ShortLink[]> {
   const result = await env.DB.prepare(`
-    SELECT id, owner_user_id, slug, destination_url, title, note, status, created_at, updated_at,
+    SELECT id, owner_user_id, slug, namespace_slug, destination_url, title, note,
+           preview_title, preview_image_url, metadata_checked_at, status, created_at, updated_at,
            expires_at, redirect_type, click_count, last_clicked_at
     FROM short_links WHERE owner_user_id = ? ORDER BY created_at DESC LIMIT 500
   `).bind(userId).all<ShortLink>();

@@ -8,7 +8,7 @@ test('create form captures a stable form reference before async work', () => {
   assert.match(ui, /const form=e\.currentTarget/);
   assert.match(ui, /form\.reset\(\)/);
   assert.doesNotMatch(ui, /e\.currentTarget\.reset\(\)/);
-  assert.match(ui, /writeText\([^)]*out\.link\.slug[^)]*\)\.catch\(\(\)=>\{\}\)/);
+  assert.match(ui, /writeText\(out\.link\.short_url\)\.catch\(\(\)=>\{\}\)/);
 });
 
 test('link cards show title, localized status and wrapped destination URLs', () => {
