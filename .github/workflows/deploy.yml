@@ -5,7 +5,16 @@ on:
     branches:
       - main
     paths:
-      - .github/deploy-trigger
+      - '.github/**'
+      - 'src/**'
+      - 'worker/**'
+      - 'migrations/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'wrangler.toml'
+      - 'vite.config.*'
+      - 'tsconfig*.json'
+      - '.github/deploy-trigger'
   workflow_dispatch:
 
 concurrency:
