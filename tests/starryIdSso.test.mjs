@@ -54,6 +54,17 @@ test('public login UI points to Starry ID', async () => {
   assert.match(ui, /使用 Starry ID 登入/);
 });
 
+test('Google account switch clears the local session and forces central account choice', async () => {
+  const router = await read('src/routerV9.ts');
+  assert.match(router, /path === "\/auth\/switch"/);
+  assert.match(router, /logoutUrl\.pathname = "\/api\/logout"/);
+  assert.match(router, /auth\/gostarry\?choose=1/);
+  assert.match(router, /url\.searchParams\.get\("choose"\) === "1"/);
+  assert.match(router, /id=\"menuSwitchAccount\"/);
+  assert.match(router, /切換 Google 帳號/);
+  assert.match(router, /Set-Cookie/);
+});
+
 test('member identity shows central rank and links avatar and name to public Starry ID card', async () => {
   const source = await read('src/starrySso.ts');
   const index = await read('src/index.ts');
@@ -78,6 +89,8 @@ test('production workflow no longer depends on a Go Starry Google client secret'
   assert.match(workflow, /Verify Starry ID central SSO routes/);
   assert.match(workflow, /https:\/\/go\.starry\.phd\/auth\/starry/);
   assert.match(workflow, /https:\/\/id\.starry\.phd\/auth\/gostarry/);
+  assert.match(workflow, /Google account chooser/);
+  assert.match(workflow, /auth\/gostarry\?choose=1/);
   assert.doesNotMatch(workflow, /GOOGLE_CLIENT_SECRET/);
   assert.doesNotMatch(workflow, /wrangler secret put GOOGLE_CLIENT_ID/);
 });
