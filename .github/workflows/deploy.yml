@@ -101,6 +101,16 @@ jobs:
             "https://id.starry.phd/auth/gostarry"
 
           check_redirect \
+            "Go Starry Google account chooser route" \
+            "https://go.starry.phd/auth/starry?choose=1" \
+            "https://id.starry.phd/auth/gostarry?choose=1"
+
+          check_redirect \
+            "Go Starry one-tap account switch" \
+            "https://go.starry.phd/auth/switch" \
+            "https://id.starry.phd/auth/gostarry?choose=1"
+
+          check_redirect \
             "Go Starry legacy Google route" \
             "https://go.starry.phd/auth/google" \
             "https://id.starry.phd/auth/gostarry"
@@ -132,6 +142,16 @@ jobs:
               ;;
           esac
 
+          chooser_status="$(curl --silent --show-error \
+            --output /tmp/go-starry-central-chooser.html \
+            --write-out '%{http_code}' \
+            --max-time 20 \
+            'https://id.starry.phd/auth/gostarry?choose=1')"
+          echo "Starry ID Google account chooser: HTTP $chooser_status"
+          test "$chooser_status" = "200" || { echo "::error::Google account chooser expected HTTP 200, got $chooser_status"; exit 1; }
+          test -s /tmp/go-starry-central-chooser.html || { echo "::error::Google account chooser returned an empty page"; exit 1; }
+          grep -q 'FORCE_ACCOUNT_CHOICE=true' /tmp/go-starry-central-chooser.html || { echo "::error::Central SSO did not enable forced Google account choice"; exit 1; }
+
       - name: Deployment summary
         run: |
           echo "### go-starry production deployment completed" >> "$GITHUB_STEP_SUMMARY"
@@ -139,3 +159,4 @@ jobs:
           echo "- Commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "- Home smoke test: passed" >> "$GITHUB_STEP_SUMMARY"
           echo "- Starry ID central SSO verification: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Google account switching: passed" >> "$GITHUB_STEP_SUMMARY"
