@@ -1,5 +1,5 @@
 import baseWorker from "./index";
-import governanceWorker from "./indexV9";
+import governanceWorker from "./indexV10";
 import type { Env } from "./types";
 
 const STARRY_ID_GO_STARRY_LOGIN = "https://id.starry.phd/auth/gostarry";
