@@ -33,6 +33,14 @@ jobs:
         with:
           node-version: 22
 
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: go-starry-npm-${{ runner.os }}-${{ hashFiles('package.json') }}
+          restore-keys: |
+            go-starry-npm-${{ runner.os }}-
+
       - name: Verify deployment secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -42,7 +50,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing GitHub secret: CLOUDFLARE_ACCOUNT_ID"; exit 1; }
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --prefer-offline --no-audit --no-fund
 
       - name: Run tests
         run: npm test
