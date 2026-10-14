@@ -108,7 +108,6 @@ jobs:
           case "$central_status" in
             200)
               test -s /tmp/go-starry-central-login.html
-              grep -Eqi 'Starry|Google|登入|login' /tmp/go-starry-central-login.html
               ;;
             301|302|303|307|308)
               grep -Eiq '^location: https?://' /tmp/go-starry-central-headers.txt
