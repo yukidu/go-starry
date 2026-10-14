@@ -58,7 +58,8 @@ test('Google account switch clears the local session and forces central account 
   const router = await read('src/routerV9.ts');
   assert.match(router, /path === "\/auth\/switch"/);
   assert.match(router, /logoutUrl\.pathname = "\/api\/logout"/);
-  assert.match(router, /auth\/gostarry\?choose=1/);
+  assert.match(router, /https:\/\/id\.starry\.phd\/auth\/gostarry/);
+  assert.match(router, /\?choose=1/);
   assert.match(router, /url\.searchParams\.get\("choose"\) === "1"/);
   assert.match(router, /id=\"menuSwitchAccount\"/);
   assert.match(router, /切換 Google 帳號/);
