@@ -1,8 +1,13 @@
 name: CI
 on:
   pull_request:
-  push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: go-starry-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -11,6 +16,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: go-starry-npm-${{ runner.os }}-${{ hashFiles('package.json') }}
+          restore-keys: |
+            go-starry-npm-${{ runner.os }}-
+      - run: npm install --prefer-offline --no-audit --no-fund
       - run: npm test
       - run: npm run typecheck
