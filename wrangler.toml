@@ -1,5 +1,5 @@
 name = "go-starry"
-main = "src/indexV9.ts"
+main = "src/routerV9.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true
 
