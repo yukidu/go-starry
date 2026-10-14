@@ -73,44 +73,58 @@ jobs:
 
       - name: Verify Starry ID central SSO routes
         run: |
-          curl --silent --show-error \
-            --dump-header /tmp/go-starry-starry-headers.txt \
-            --output /dev/null \
-            --max-time 20 \
-            https://go.starry.phd/auth/starry
-          grep -Eq '^HTTP/[^ ]+ 302' /tmp/go-starry-starry-headers.txt
-          grep -Eiq '^location: https://id\.starry\.phd/auth/gostarry' /tmp/go-starry-starry-headers.txt
+          check_redirect() {
+            name="$1"
+            source_url="$2"
+            expected_url="$3"
+            result="$(curl --silent --show-error \
+              --output /dev/null \
+              --write-out '%{http_code}|%{redirect_url}' \
+              --max-time 20 \
+              "$source_url")"
+            status="${result%%|*}"
+            redirect_url="${result#*|}"
+            echo "$name: HTTP $status -> $redirect_url"
+            if [ "$status" != "302" ]; then
+              echo "::error::$name expected HTTP 302, got $status"
+              exit 1
+            fi
+            if [ "$redirect_url" != "$expected_url" ]; then
+              echo "::error::$name expected redirect $expected_url, got $redirect_url"
+              exit 1
+            fi
+          }
 
-          curl --silent --show-error \
-            --dump-header /tmp/go-starry-legacy-headers.txt \
-            --output /dev/null \
-            --max-time 20 \
-            https://go.starry.phd/auth/google
-          grep -Eq '^HTTP/[^ ]+ 302' /tmp/go-starry-legacy-headers.txt
-          grep -Eiq '^location: https://id\.starry\.phd/auth/gostarry' /tmp/go-starry-legacy-headers.txt
+          check_redirect \
+            "Go Starry Starry-ID route" \
+            "https://go.starry.phd/auth/starry" \
+            "https://id.starry.phd/auth/gostarry"
 
-          callback_status="$(curl --silent --show-error \
-            --dump-header /tmp/go-starry-callback-headers.txt \
-            --output /dev/null \
-            --write-out '%{http_code}' \
-            --max-time 20 \
-            https://go.starry.phd/auth/callback)"
-          test "$callback_status" = "302"
-          grep -Eiq '^location: https://go\.starry\.phd/\?starry=error' /tmp/go-starry-callback-headers.txt
+          check_redirect \
+            "Go Starry legacy Google route" \
+            "https://go.starry.phd/auth/google" \
+            "https://id.starry.phd/auth/gostarry"
 
-          central_status="$(curl --silent --show-error \
-            --dump-header /tmp/go-starry-central-headers.txt \
+          check_redirect \
+            "Go Starry invalid callback" \
+            "https://go.starry.phd/auth/callback" \
+            "https://go.starry.phd/?starry=error"
+
+          central_result="$(curl --silent --show-error \
             --output /tmp/go-starry-central-login.html \
-            --write-out '%{http_code}' \
+            --write-out '%{http_code}|%{redirect_url}' \
             --max-time 20 \
             https://id.starry.phd/auth/gostarry)"
+          central_status="${central_result%%|*}"
+          central_redirect="${central_result#*|}"
+          echo "Starry ID central entry: HTTP $central_status -> $central_redirect"
 
           case "$central_status" in
             200)
-              test -s /tmp/go-starry-central-login.html
+              test -s /tmp/go-starry-central-login.html || { echo "::error::Starry ID central SSO returned an empty 200 response"; exit 1; }
               ;;
             301|302|303|307|308)
-              grep -Eiq '^location: https?://' /tmp/go-starry-central-headers.txt
+              test -n "$central_redirect" || { echo "::error::Starry ID central SSO redirect has no Location"; exit 1; }
               ;;
             *)
               echo "::error::Starry ID central SSO returned unexpected HTTP status: $central_status"
