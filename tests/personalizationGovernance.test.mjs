@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const policy = await readFile(new URL('../src/policyV9.ts', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../src/indexV9.ts', import.meta.url), 'utf8');
+const router = await readFile(new URL('../src/routerV9.ts', import.meta.url), 'utf8');
 const ui = await readFile(new URL('../src/uiV9.ts', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../migrations/0006_personalization_governance.sql', import.meta.url), 'utf8');
 const wrangler = await readFile(new URL('../wrangler.toml', import.meta.url), 'utf8');
@@ -59,6 +60,16 @@ test('link filter is only shown when a member has at least two personalization U
   assert.match(ui, /linkAliasFilter/);
 });
 
-test('v9 worker is the production entry point', () => {
-  assert.match(wrangler, /main = "src\/indexV9\.ts"/);
+test('system and authentication routes win before personalized short-link routing', () => {
+  assert.match(router, /path\.startsWith\("\/auth\/"\)/);
+  assert.match(router, /BASE_SYSTEM_PATHS\.has\(path\)/);
+  assert.match(router, /return baseWorker\.fetch\(request, env, ctx\)/);
+  assert.match(router, /return governanceWorker\.fetch\(request, env, ctx\)/);
+  assert.match(router, /"\/privacy"/);
+  assert.match(router, /"\/terms"/);
+  assert.match(router, /"\/sw\.js"/);
+});
+
+test('v9 protected router is the production entry point', () => {
+  assert.match(wrangler, /main = "src\/routerV9\.ts"/);
 });
