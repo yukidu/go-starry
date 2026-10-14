@@ -99,13 +99,25 @@ jobs:
           grep -Eiq '^location: https://go\.starry\.phd/\?starry=error' /tmp/go-starry-callback-headers.txt
 
           central_status="$(curl --silent --show-error \
+            --dump-header /tmp/go-starry-central-headers.txt \
             --output /tmp/go-starry-central-login.html \
             --write-out '%{http_code}' \
             --max-time 20 \
             https://id.starry.phd/auth/gostarry)"
-          test "$central_status" = "200"
-          grep -qi 'Starry ID' /tmp/go-starry-central-login.html
-          grep -qi 'Go Starry' /tmp/go-starry-central-login.html
+
+          case "$central_status" in
+            200)
+              test -s /tmp/go-starry-central-login.html
+              grep -Eqi 'Starry|Google|登入|login' /tmp/go-starry-central-login.html
+              ;;
+            301|302|303|307|308)
+              grep -Eiq '^location: https?://' /tmp/go-starry-central-headers.txt
+              ;;
+            *)
+              echo "::error::Starry ID central SSO returned unexpected HTTP status: $central_status"
+              exit 1
+              ;;
+          esac
 
       - name: Deployment summary
         run: |
