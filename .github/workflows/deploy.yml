@@ -81,14 +81,24 @@ jobs:
 
       - name: Verify QR generator production routes
         run: |
-          curl --fail --silent --show-error --max-time 20 \
-            'https://go.starry.phd/app.js?v11' > /tmp/go-starry-app.js
-          grep -q 'qrGenerateV11' /tmp/go-starry-app.js
-          grep -q '/api/qr-generator' /tmp/go-starry-app.js
+          qr_assets_ready=false
+          for attempt in $(seq 1 12); do
+            echo "QR asset verification attempt $attempt/12"
+            if curl --fail --silent --show-error --max-time 20 \
+              "https://go.starry.phd/app.js?v11&deploy=${GITHUB_SHA}" > /tmp/go-starry-app.js \
+              && grep -q 'qrGenerateV11' /tmp/go-starry-app.js \
+              && grep -q '/api/qr-generator' /tmp/go-starry-app.js; then
+              qr_assets_ready=true
+              break
+            fi
+            sleep 5
+          done
+          test "$qr_assets_ready" = "true" || { echo "::error::QR generator v11 assets did not reach production in time"; exit 1; }
 
           page_result="$(curl --silent --show-error \
             --output /dev/null \
             --write-out '%{http_code}|%{redirect_url}' \
+            --retry 6 --retry-delay 3 --retry-all-errors \
             --max-time 20 \
             https://go.starry.phd/qr-generator)"
           page_status="${page_result%%|*}"
@@ -100,6 +110,7 @@ jobs:
           api_status="$(curl --silent --show-error \
             --output /tmp/go-starry-qr-api.json \
             --write-out '%{http_code}' \
+            --retry 6 --retry-delay 3 --retry-all-errors \
             --max-time 20 \
             -X POST \
             -H 'content-type: application/json' \
@@ -107,7 +118,7 @@ jobs:
             https://go.starry.phd/api/qr-generator)"
           echo "QR generator API guest guard: HTTP $api_status"
           test "$api_status" = "401" || { echo "::error::QR generator API expected HTTP 401 for guest, got $api_status"; exit 1; }
-          grep -q '請先登入' /tmp/go-starry-qr-api.json
+          grep -q '請先登入' /tmp/go-starry-qr-api.json || { echo "::error::QR generator API guest response did not contain the login guard"; exit 1; }
 
       - name: Verify Starry ID central SSO routes
         run: |
