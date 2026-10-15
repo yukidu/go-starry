@@ -63,13 +63,13 @@ test('link filter is only shown when a member has at least two personalization U
 test('system and authentication routes win before personalized short-link routing', () => {
   assert.match(router, /path\.startsWith\("\/auth\/"\)/);
   assert.match(router, /BASE_SYSTEM_PATHS\.has\(path\)/);
-  assert.match(router, /withAccountSwitchMenu\(await baseWorker\.fetch\(request, env, ctx\)\)/);
-  assert.match(router, /withAccountSwitchMenu\(await governanceWorker\.fetch\(request, env, ctx\)\)/);
+  assert.match(router, /enhanceHtmlShell\(await baseWorker\.fetch\(request, env, ctx\)\)/);
+  assert.match(router, /enhanceHtmlShell\(await governanceWorker\.fetch\(request, env, ctx\)\)/);
   assert.match(router, /"\/privacy"/);
   assert.match(router, /"\/terms"/);
   assert.match(router, /"\/sw\.js"/);
 });
 
-test('v9 protected router is the production entry point', () => {
+test('v9 protected router remains the production entry point', () => {
   assert.match(wrangler, /main = "src\/routerV9\.ts"/);
 });

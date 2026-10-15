@@ -1,10 +1,10 @@
 const RESERVED = new Set([
   "admin", "api", "auth", "login", "logout", "signup", "privacy", "terms",
-  "dashboard", "settings", "report", "ranking", "robots.txt", "favicon.ico", "manifest.webmanifest",
+  "dashboard", "settings", "report", "ranking", "qr-generator", "robots.txt", "favicon.ico", "manifest.webmanifest",
   "sw.js", "styles.css", "app.js", "icon.svg", "icon-192.png", "icon-512.png"
 ]);
 
-const UI_ASSET_VERSION = "v10";
+const UI_ASSET_VERSION = "v11";
 
 export function isValidSlug(value: string): boolean {
   const slug = value.trim().toLowerCase();

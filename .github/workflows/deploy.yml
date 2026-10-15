@@ -79,6 +79,36 @@ jobs:
           test -s /tmp/go-starry-home.html
           grep -qi "go\.starry\.phd\|短網址\|Starry" /tmp/go-starry-home.html
 
+      - name: Verify QR generator production routes
+        run: |
+          curl --fail --silent --show-error --max-time 20 \
+            'https://go.starry.phd/app.js?v11' > /tmp/go-starry-app.js
+          grep -q 'qrGenerateV11' /tmp/go-starry-app.js
+          grep -q '/api/qr-generator' /tmp/go-starry-app.js
+
+          page_result="$(curl --silent --show-error \
+            --output /dev/null \
+            --write-out '%{http_code}|%{redirect_url}' \
+            --max-time 20 \
+            https://go.starry.phd/qr-generator)"
+          page_status="${page_result%%|*}"
+          page_redirect="${page_result#*|}"
+          echo "QR generator page: HTTP $page_status -> $page_redirect"
+          test "$page_status" = "302" || { echo "::error::QR generator page expected HTTP 302 for guest, got $page_status"; exit 1; }
+          test "$page_redirect" = "https://go.starry.phd/auth/starry" || { echo "::error::QR generator page redirect mismatch: $page_redirect"; exit 1; }
+
+          api_status="$(curl --silent --show-error \
+            --output /tmp/go-starry-qr-api.json \
+            --write-out '%{http_code}' \
+            --max-time 20 \
+            -X POST \
+            -H 'content-type: application/json' \
+            --data '{"content":"Starry QR smoke test","size":512}' \
+            https://go.starry.phd/api/qr-generator)"
+          echo "QR generator API guest guard: HTTP $api_status"
+          test "$api_status" = "401" || { echo "::error::QR generator API expected HTTP 401 for guest, got $api_status"; exit 1; }
+          grep -q '請先登入' /tmp/go-starry-qr-api.json
+
       - name: Verify Starry ID central SSO routes
         run: |
           check_redirect() {
@@ -166,5 +196,6 @@ jobs:
           echo "- URL: https://go.starry.phd" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "- Home smoke test: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- QR generator verification: passed" >> "$GITHUB_STEP_SUMMARY"
           echo "- Starry ID central SSO verification: passed" >> "$GITHUB_STEP_SUMMARY"
           echo "- Google account switching: passed" >> "$GITHUB_STEP_SUMMARY"
