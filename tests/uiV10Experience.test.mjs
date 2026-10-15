@@ -71,11 +71,14 @@ test('v10 upgrades native selects and intercepts native validation bubbles', asy
   assert.match(styles, /starry-select-menu/);
 });
 
-test('production router serves v10 assets', async () => {
+test('production v11 keeps the v10 experience layer and serves v11 assets', async () => {
   const router = await readFile(new URL('../src/routerV9.ts', import.meta.url), 'utf8');
-  const index = await readFile(new URL('../src/indexV10.ts', import.meta.url), 'utf8');
-  assert.match(router, /from "\.\/indexV10"/);
-  assert.match(index, /from "\.\/uiV10"/);
-  assert.match(index, /path === "\/styles\.css"/);
-  assert.match(index, /path === "\/app\.js"/);
+  const indexV11 = await readFile(new URL('../src/indexV11.ts', import.meta.url), 'utf8');
+  const indexV10 = await readFile(new URL('../src/indexV10.ts', import.meta.url), 'utf8');
+  assert.match(router, /from "\.\/indexV11"/);
+  assert.match(indexV11, /from "\.\/indexV10"/);
+  assert.match(indexV11, /from "\.\/uiV11"/);
+  assert.match(indexV11, /path === "\/styles\.css"/);
+  assert.match(indexV11, /path === "\/app\.js"/);
+  assert.match(indexV10, /from "\.\/uiV10"/);
 });
