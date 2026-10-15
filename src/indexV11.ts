@@ -3,7 +3,8 @@ import experienceWorker from "./indexV10";
 import type { Env } from "./types";
 import { getUserFromRequest } from "./db";
 import { html, json } from "./security";
-import { appJs, qrGeneratorPage, styles } from "./uiV11";
+import { appJs, qrGeneratorPage } from "./uiV11";
+import { styles } from "./uiV12";
 
 const QR_SIZES = new Set([512, 1024, 1536]);
 const QR_MAX_CONTENT = 2000;

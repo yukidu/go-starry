@@ -20,8 +20,8 @@ export const manifestJson = JSON.stringify({
 });
 
 export const serviceWorkerJs = `
-const CACHE='starry-anywhere-door-v11';
-const SHELL=['/','/styles.css?v11','/app.js?v11','/manifest.webmanifest','/icon.svg','/icon-192.png','/icon-512.png'];
+const CACHE='starry-anywhere-door-v12';
+const SHELL=['/','/styles.css?v12','/app.js?v12','/manifest.webmanifest','/icon.svg','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))));self.clients.claim()});
 self.addEventListener('fetch',event=>{const req=event.request;if(req.method!=='GET')return;const url=new URL(req.url);if(url.origin!==location.origin||url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/'))return;event.respondWith(fetch(req).then(response=>{const clone=response.clone();caches.open(CACHE).then(cache=>cache.put(req,clone));return response}).catch(()=>caches.match(req).then(hit=>hit||caches.match('/'))))});
