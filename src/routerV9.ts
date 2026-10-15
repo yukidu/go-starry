@@ -1,5 +1,5 @@
 import baseWorker from "./index";
-import governanceWorker from "./indexV10";
+import governanceWorker from "./indexV11";
 import type { Env } from "./types";
 
 const STARRY_ID_GO_STARRY_LOGIN = "https://id.starry.phd/auth/gostarry";
@@ -44,33 +44,32 @@ async function switchGoogleAccount(request: Request, env: Env, ctx: ExecutionCon
   return new Response(null, { status: 302, headers });
 }
 
-async function withAccountSwitchMenu(response: Response): Promise<Response> {
+async function enhanceHtmlShell(response: Response): Promise<Response> {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.toLowerCase().includes("text/html")) return response;
 
-  const source = await response.text();
-  if (source.includes('id="menuSwitchAccount"')) {
-    const headers = new Headers(response.headers);
-    headers.delete("content-length");
-    return new Response(source, { status: response.status, statusText: response.statusText, headers });
+  let source = await response.text();
+
+  if (!source.includes('id="menuQrGenerator"')) {
+    const qrItem = '<a id="menuQrGenerator" class="menu-item" href="/qr-generator"><span class="menu-icon">▦</span>QR Code 產生器</a>';
+    const ranking = /(<a id="menuRanking"[^>]*>[\s\S]*?<\/a>)/;
+    const install = '<button class="menu-item" data-install>';
+    if (ranking.test(source)) source = source.replace(ranking, `$1${qrItem}`);
+    else if (source.includes(install)) source = source.replace(install, `${qrItem}${install}`);
   }
 
-  const marker = '<div class="menu-footer"><button id="menuLogout"';
-  if (!source.includes(marker)) {
-    const headers = new Headers(response.headers);
-    headers.delete("content-length");
-    return new Response(source, { status: response.status, statusText: response.statusText, headers });
+  if (!source.includes('id="menuSwitchAccount"')) {
+    const marker = '<div class="menu-footer"><button id="menuLogout"';
+    if (source.includes(marker)) {
+      const replacement = '<div class="menu-footer"><a id="menuSwitchAccount" class="menu-item" href="/auth/switch"><span class="menu-icon">⇄</span>切換 Google 帳號</a><button id="menuLogout"';
+      source = source.replace(marker, replacement);
+    }
   }
 
-  const replacement = '<div class="menu-footer"><a id="menuSwitchAccount" class="menu-item" href="/auth/switch"><span class="menu-icon">⇄</span>切換 Google 帳號</a><button id="menuLogout"';
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.set("cache-control", "no-store");
-  return new Response(source.replace(marker, replacement), {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
+  return new Response(source, { status: response.status, statusText: response.statusText, headers });
 }
 
 export default {
@@ -83,8 +82,6 @@ export default {
       return switchGoogleAccount(request, env, ctx);
     }
 
-    // Explicit account-choice mode bypasses an existing Starry ID session so the
-    // central Google sign-in screen is shown instead of silently reusing the last account.
     if (
       method === "GET" &&
       (path === "/auth/starry" || path === "/auth/google") &&
@@ -93,12 +90,10 @@ export default {
       return Response.redirect(STARRY_ID_GO_STARRY_CHOOSE_ACCOUNT, 302);
     }
 
-    // System/auth routes must win before personalized `/:namespace/:slug` routing.
-    // Without this guard `/auth/starry` looks like namespace=auth + slug=starry.
     if (isBaseSystemRoute(path)) {
-      return withAccountSwitchMenu(await baseWorker.fetch(request, env, ctx));
+      return enhanceHtmlShell(await baseWorker.fetch(request, env, ctx));
     }
 
-    return withAccountSwitchMenu(await governanceWorker.fetch(request, env, ctx));
+    return enhanceHtmlShell(await governanceWorker.fetch(request, env, ctx));
   }
 };
