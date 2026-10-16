@@ -78,7 +78,7 @@ export function json(data: unknown, status = 200, headers: HeadersInit = {}): Re
 function versionUiAssets(body: string): string {
   return body
     .replace('href="/styles.css"', `href="/styles.css?${UI_ASSET_VERSION}"`)
-    .replace('src="/app.js"', `src="/app.js?${UI_ASSET_VERSION}"`);
+    .replace('src="/app.js"', `src="/app.js?${UI_ASSET_VERSION}`);
 }
 
 export function html(body: string, status = 200): Response {
@@ -87,7 +87,7 @@ export function html(body: string, status = 200): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "content-security-policy": "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://accounts.google.com",
+      "content-security-policy": "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self' https://accounts.google.com; script-src 'self' https://accounts.google.com; connect-src 'self' https://id.starry.phd https://accounts.google.com https://www.googleapis.com; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://accounts.google.com",
       "referrer-policy": "strict-origin-when-cross-origin",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
