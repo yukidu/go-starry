@@ -15,7 +15,7 @@
     "qrcode-svg": "^1.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "wrangler": "^4.44.0"
   }
 }
