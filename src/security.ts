@@ -78,7 +78,7 @@ export function json(data: unknown, status = 200, headers: HeadersInit = {}): Re
 function versionUiAssets(body: string): string {
   return body
     .replace('href="/styles.css"', `href="/styles.css?${UI_ASSET_VERSION}"`)
-    .replace('src="/app.js"', `src="/app.js?${UI_ASSET_VERSION}`);
+    .replace('src="/app.js"', `src="/app.js?${UI_ASSET_VERSION}"`);
 }
 
 export function html(body: string, status = 200): Response {
