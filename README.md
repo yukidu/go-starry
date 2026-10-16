@@ -1,49 +1,37 @@
-# 繁星短網址｜go-starry
+# 繁星任意門｜starry-go
 
-正式網域：`https://go.starry.phd`
+正式網址：`https://go.starry.phd/`
 
-完全獨立的短網址 App，不使用 Starry ID、EchoStars 會員資料、session 或 D1。
+繁星 Starry.phd 生態系短網址服務。會員登入統一由「繁星通行證」Starry ID 管理；繁星任意門保留自己的短網址、個人化網址、點擊紀錄與 D1 資料。
 
-## MVP
+## 目前功能
 
-- Google OAuth 登入
-- 建立自動或自訂 slug
+- 繁星通行證／Google 登入
+- 登入一次後可承接繁星生態系中央登入狀態
+- 登出與切換 Google 帳號同步中央登入
+- 建立自動或自訂短碼
 - 302 redirect
 - 個人 Dashboard
-- 啟用 / 停用 / 刪除
+- 啟用／刪除短網址
 - 點擊數與最近點擊
 - QR Code SVG
 - `/privacy`、`/terms`
-- D1 session / links / analytics
-- 不保存完整 IP，只保存可選的 salted hash
+- 不保存完整 IP，只保存服務必要的匿名資料
 - 基本建立速率限制與危險 URL scheme 阻擋
 
-## Cloudflare resources
+## 正式架構
 
-- Worker: `go-starry`
-- D1: `go-starry-db`
-- Domain: `go.starry.phd`
+- GitHub Repo：`yukidu/starry-go`
+- 正式網址：`go.starry.phd`
+- 中央會員：`https://id.starry.phd/`（繁星通行證）
+- App D1：`go-starry-db`（保留既有資源名稱，避免無意義搬遷）
 
-## 首次部署前需要完成
+繁星通行證的敏感登入 Cookie 只屬於 `id.starry.phd`，不使用 `Domain=.starry.phd` 共用敏感 Cookie。繁星任意門透過中央登入狀態與一次性短效票證安全承接會員身份。
 
-1. 在 Cloudflare 建立 D1 `go-starry-db`，把 Database ID 填入 `wrangler.toml`。
-2. Cloudflare Worker secrets：
-   - `GOOGLE_CLIENT_ID`
-   - `GOOGLE_CLIENT_SECRET`
-   - `IP_HASH_SALT`
-3. GitHub Actions secrets：
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-4. Google OAuth Web Client：
-   - Authorized JavaScript origin: `https://go.starry.phd`
-   - Authorized redirect URI: `https://go.starry.phd/auth/google/callback`
-5. Cloudflare DNS / Worker route 確認 `go.starry.phd/*` 指向 `go-starry`。
-
-## 本機
+## 開發
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars
-npm run db:migrate:local
-npm run dev
+npm run typecheck
+npm test
 ```
