@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 const policy = await readFile(new URL('../src/policyV9.ts', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../src/indexV9.ts', import.meta.url), 'utf8');
 const router = await readFile(new URL('../src/routerV9.ts', import.meta.url), 'utf8');
+const ecosystemSso = await readFile(new URL('../src/ecosystemSso.ts', import.meta.url), 'utf8');
 const ui = await readFile(new URL('../src/uiV9.ts', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../migrations/0006_personalization_governance.sql', import.meta.url), 'utf8');
 const wrangler = await readFile(new URL('../wrangler.toml', import.meta.url), 'utf8');
@@ -70,6 +71,8 @@ test('system and authentication routes win before personalized short-link routin
   assert.match(router, /"\/sw\.js"/);
 });
 
-test('v9 protected router remains the production entry point', () => {
-  assert.match(wrangler, /main = "src\/routerV9\.ts"/);
+test('SSO wrapper is production entry while v9 protected router remains underneath it', () => {
+  assert.match(wrangler, /main = "src\/ecosystemSso\.ts"/);
+  assert.match(ecosystemSso, /import appWorker from '\.\/routerV9'/);
+  assert.match(ecosystemSso, /appWorker\.fetch\(request, env, ctx\)/);
 });

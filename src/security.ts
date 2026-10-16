@@ -87,7 +87,7 @@ export function html(body: string, status = 200): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "content-security-policy": "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://accounts.google.com",
+      "content-security-policy": "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https://accounts.google.com; script-src 'self' https://accounts.google.com; connect-src 'self' https://id.starry.phd https://accounts.google.com https://www.googleapis.com; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://accounts.google.com",
       "referrer-policy": "strict-origin-when-cross-origin",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
