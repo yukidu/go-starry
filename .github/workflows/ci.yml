@@ -2,10 +2,6 @@ name: CI
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.github/dependabot.yml'
   workflow_dispatch:
 
 concurrency:
@@ -13,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
