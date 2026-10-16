@@ -2,6 +2,10 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/dependabot.yml'
   workflow_dispatch:
 
 concurrency:
@@ -24,5 +28,18 @@ jobs:
           restore-keys: |
             go-starry-npm-${{ runner.os }}-
       - run: npm install --prefer-offline --no-audit --no-fund
-      - run: npm test
-      - run: npm run typecheck
+      - name: Run tests and TypeScript check in parallel
+        shell: bash
+        run: |
+          set +e
+          npm test &
+          test_pid=$!
+          npm run typecheck &
+          type_pid=$!
+          wait "$test_pid"
+          test_status=$?
+          wait "$type_pid"
+          type_status=$?
+          if [ "$test_status" -ne 0 ] || [ "$type_status" -ne 0 ]; then
+            exit 1
+          fi
